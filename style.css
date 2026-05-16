@@ -7,7 +7,7 @@
     --text: #e0e0e0;
     --text-dim: #888888;
     --accent: #1a1a1a;
-    --safe-area-bottom: env(safe-area-inset-bottom);
+    --safe-area-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 * {
