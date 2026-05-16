@@ -69,8 +69,11 @@ const App = {
         const todaysTasks = this.state.routines.filter(r => r.days.includes(dayOfWeek));
         
         todaysTasks.forEach(task => {
-            // If it's time, and we haven't notified for this task today yet
-            if (task.time === currentTime && !this.state.lastNotified[dateKey + task.id]) {
+            // If it's time, notifications are enabled for this task, and we haven't notified for this task today yet
+            if (task.time === currentTime && 
+                (task.notificationsEnabled !== false) && 
+                !this.state.lastNotified[dateKey + task.id]) {
+                
                 const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
                 if (!isChecked) {
                     this.sendNotification(task);
@@ -421,9 +424,13 @@ const App = {
             const card = document.createElement('div');
             card.className = 'task-card';
             const stack = [task.focus.primary, task.focus.secondary, task.focus.tertiary].filter(f => f && f !== 'none').join(' / ');
+            const notifyIcon = task.notificationsEnabled === false ? '🔇' : '🔔';
             card.innerHTML = `
                 <div class="task-info">
-                    <span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span>
+                    <span class="task-name">
+                        <span onclick="App.toggleTaskNotifications('${task.id}')" style="cursor: pointer; margin-right: 5px;" title="Toggle Alerts">${notifyIcon}</span>
+                        ${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span>
+                    </span>
                     <span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span>
                 </div>
                 <div class="task-actions">
@@ -468,6 +475,7 @@ const App = {
         document.getElementById('task-importance').value = routine.importance || "6";
         document.getElementById('task-difficulty').value = routine.difficulty || "6";
         document.getElementById('task-duration').value = routine.duration || "30";
+        document.getElementById('task-notifications').checked = routine.notificationsEnabled !== false;
 
         document.querySelectorAll('.days-selector input').forEach(cb => { cb.checked = routine.days.includes(cb.value); });
         document.getElementById('modal-title').textContent = "Edit Routine";
@@ -478,6 +486,15 @@ const App = {
     deleteRoutine: function(id) {
         if (confirm('Delete this routine architecture?')) {
             this.state.routines = this.state.routines.filter(r => r.id !== id);
+            this.saveData();
+            this.render();
+        }
+    },
+
+    toggleTaskNotifications: function(id) {
+        const routine = this.state.routines.find(r => r.id === id);
+        if (routine) {
+            routine.notificationsEnabled = routine.notificationsEnabled === false ? true : false;
             this.saveData();
             this.render();
         }
@@ -501,14 +518,15 @@ const App = {
                 const duration = document.getElementById('task-duration').value;
                 const xpValue = parseInt(importance) + parseInt(difficulty) + parseInt(duration);
                 const days = Array.from(document.querySelectorAll('.days-selector input:checked')).map(i => i.value);
+                const notificationsEnabled = document.getElementById('task-notifications').checked;
 
                 if (days.length === 0) return alert('Select at least one day.');
 
                 if (id) {
                     const idx = this.state.routines.findIndex(r => r.id === id);
-                    if (idx !== -1) this.state.routines[idx] = { ...this.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration };
+                    if (idx !== -1) this.state.routines[idx] = { ...this.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration, notificationsEnabled };
                 } else {
-                    this.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration });
+                    this.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration, notificationsEnabled });
                 }
 
                 this.saveData(); this.render(); closeModal();
