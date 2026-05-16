@@ -20,10 +20,7 @@
         <!-- Header -->
         <header class="app-header">
             <div class="greeting">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span id="current-date">FRIDAY, MAY 15</span>
-                    <button id="notify-toggle" class="btn-notify" onclick="App.requestNotificationPermission()" title="Enable Alerts">🔔</button>
-                </div>
+                <span id="current-date">FRIDAY, MAY 15</span>
                 <h1>NeuroRank</h1>
             </div>
             <div class="level-indicator">
@@ -226,11 +223,6 @@
                             <label><input type="checkbox" value="6"> <span>S</span></label>
                             <label><input type="checkbox" value="0"> <span>S</span></label>
                         </div>
-                    </div>
-
-                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
-                        <input type="checkbox" id="task-notifications" checked style="width: 20px; height: 20px; accent-color: var(--gold);">
-                        <label for="task-notifications" style="margin-bottom: 0;">Enable Alerts for this task</label>
                     </div>
 
                     <button type="submit" id="btn-submit-task" class="btn-save">ADD ROUTINE</button>

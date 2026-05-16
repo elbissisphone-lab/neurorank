@@ -15,8 +15,6 @@ const App = {
         completions: {}, 
         totalCompleted: 0,
         lastLoginDate: null,
-        notificationsEnabled: false,
-        lastNotified: {},
         mastery: {
             "Ni": { xp: 0, level: 1 }, "Ne": { xp: 0, level: 1 },
             "Ti": { xp: 0, level: 1 }, "Te": { xp: 0, level: 1 },
@@ -32,132 +30,9 @@ const App = {
             this.updateHeader();
             this.render();
             this.setupEventListeners();
-            this.registerServiceWorker();
-            
-            if (window.Notification && Notification.permission === 'granted') {
-                this.state.notificationsEnabled = true;
-            }
-
-            this.startNotificationTimer();
         } catch (e) {
             console.error("App Init Crash: " + e.message);
         }
-    },
-
-    registerServiceWorker: function() {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('SW Registered'))
-                .catch(err => console.log('SW Registration Failed', err));
-        }
-    },
-
-    requestNotificationPermission: function() {
-        if (!('Notification' in window)) {
-            alert("Notification API not found. If you are on iPhone, you MUST use 'Add to Home Screen' first.");
-            return;
-        }
-
-        Notification.requestPermission().then(permission => {
-            if (permission === "granted") {
-                this.state.notificationsEnabled = true;
-                this.saveData();
-                this.render();
-                
-                // Show a confirmation notification immediately
-                this.sendNotification({ name: "System Alerts Active" });
-            } else if (permission === "denied") {
-                alert("Notification permission denied. Please enable them in iPhone Settings > Notifications > NeuroRank.");
-            }
-        });
-    },
-
-    startNotificationTimer: function() {
-        // Clear any existing timers
-        if (this.notificationTimer) clearInterval(this.notificationTimer);
-        
-        this.notificationTimer = setInterval(() => {
-            this.checkNotifications();
-        }, 10000); // Check every 10 seconds for high reliability
-    },
-
-    checkNotifications: function() {
-        const debugStatus = document.getElementById('debug-status');
-        const debugTime = document.getElementById('debug-time');
-        const debugEnabled = document.getElementById('debug-enabled');
-
-        const now = new Date();
-        const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        const dayOfWeek = now.getDay().toString();
-        const dateKey = this.getDateKey();
-
-        if (debugTime) debugTime.textContent = currentTime;
-        if (debugEnabled) debugEnabled.textContent = `${this.state.notificationsEnabled}/${Notification.permission}`;
-
-        if (!this.state.notificationsEnabled || Notification.permission !== "granted") {
-            if (debugStatus) debugStatus.textContent = "ALERTS OFF";
-            return;
-        }
-        
-        const todaysTasks = this.state.routines.filter(r => r.days.includes(dayOfWeek));
-        if (debugStatus) debugStatus.textContent = `CHECKING ${todaysTasks.length} TASKS`;
-
-        todaysTasks.forEach(task => {
-            if (task.time === currentTime && (task.notificationsEnabled !== false)) {
-                const notifyKey = dateKey + task.id;
-                
-                // Ensure lastNotified exists
-                if (!this.state.lastNotified) this.state.lastNotified = {};
-
-                if (!this.state.lastNotified[notifyKey]) {
-                    const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
-                    if (!isChecked) {
-                        if (debugStatus) debugStatus.textContent = "SENDING...";
-                        this.sendNotification(task);
-                        this.state.lastNotified[notifyKey] = true;
-                        this.saveData();
-                    }
-                }
-            }
-        });
-    },
-
-    sendNotification: function(task) {
-        if (Notification.permission === "granted") {
-            navigator.serviceWorker.ready.then(registration => {
-                registration.showNotification("NeuroRank Directive", {
-                    body: task.id ? `It's time for: ${task.name}` : task.name,
-                    icon: 'logo.png',
-                    badge: 'logo.png',
-                    vibrate: [200, 100, 200],
-                    tag: task.id || 'system-alert',
-                    renotify: true
-                });
-            });
-        }
-    },
-
-    sendTestNotification: function() {
-        if (!('Notification' in window)) {
-            alert("Notification API not found.");
-            return;
-        }
-
-        if (Notification.permission !== "granted") {
-            alert("Permission not granted. Status: " + Notification.permission);
-            return;
-        }
-        
-        alert("Attempting to trigger notification via SW...");
-        
-        navigator.serviceWorker.ready.then(registration => {
-            alert("Service Worker Ready. Sending...");
-            registration.showNotification("NeuroRank Test", {
-                body: "If you see this, notifications are working correctly!",
-                icon: 'logo.png',
-                vibrate: [200, 100, 200]
-            });
-        }).catch(err => alert("SW Ready Error: " + err));
     },
 
     loadData: function() {
@@ -487,13 +362,9 @@ const App = {
             const card = document.createElement('div');
             card.className = 'task-card';
             const stack = [task.focus.primary, task.focus.secondary, task.focus.tertiary].filter(f => f && f !== 'none').join(' / ');
-            const notifyIcon = task.notificationsEnabled === false ? '🔇' : '🔔';
             card.innerHTML = `
                 <div class="task-info">
-                    <span class="task-name">
-                        <span onclick="App.toggleTaskNotifications('${task.id}')" style="cursor: pointer; margin-right: 5px;" title="Toggle Alerts">${notifyIcon}</span>
-                        ${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span>
-                    </span>
+                    <span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span>
                     <span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span>
                 </div>
                 <div class="task-actions">
@@ -538,7 +409,6 @@ const App = {
         document.getElementById('task-importance').value = routine.importance || "6";
         document.getElementById('task-difficulty').value = routine.difficulty || "6";
         document.getElementById('task-duration').value = routine.duration || "30";
-        document.getElementById('task-notifications').checked = routine.notificationsEnabled !== false;
 
         document.querySelectorAll('.days-selector input').forEach(cb => { cb.checked = routine.days.includes(cb.value); });
         document.getElementById('modal-title').textContent = "Edit Routine";
@@ -549,15 +419,6 @@ const App = {
     deleteRoutine: function(id) {
         if (confirm('Delete this routine architecture?')) {
             this.state.routines = this.state.routines.filter(r => r.id !== id);
-            this.saveData();
-            this.render();
-        }
-    },
-
-    toggleTaskNotifications: function(id) {
-        const routine = this.state.routines.find(r => r.id === id);
-        if (routine) {
-            routine.notificationsEnabled = routine.notificationsEnabled === false ? true : false;
             this.saveData();
             this.render();
         }
@@ -581,15 +442,14 @@ const App = {
                 const duration = document.getElementById('task-duration').value;
                 const xpValue = parseInt(importance) + parseInt(difficulty) + parseInt(duration);
                 const days = Array.from(document.querySelectorAll('.days-selector input:checked')).map(i => i.value);
-                const notificationsEnabled = document.getElementById('task-notifications').checked;
 
                 if (days.length === 0) return alert('Select at least one day.');
 
                 if (id) {
                     const idx = this.state.routines.findIndex(r => r.id === id);
-                    if (idx !== -1) this.state.routines[idx] = { ...this.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration, notificationsEnabled };
+                    if (idx !== -1) this.state.routines[idx] = { ...this.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration };
                 } else {
-                    this.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration, notificationsEnabled });
+                    this.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration });
                 }
 
                 this.saveData(); this.render(); closeModal();
