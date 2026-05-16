@@ -247,5 +247,16 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        console.log("Inline Script executing...");
+        setTimeout(() => {
+            if (typeof App !== 'undefined') {
+                console.log("App found, calling init...");
+                App.init();
+            } else {
+                alert("Critical Error: 'App' object not found. Script failed to load.");
+            }
+        }, 500);
+    </script>
 </body>
 </html>

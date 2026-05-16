@@ -2,6 +2,13 @@
  * Elite Routines - Application Logic V5 (Multi-Function & Penalties)
  */
 
+window.onerror = function(msg, url, lineNo, columnNo, error) {
+    alert('GLOBAL ERROR: ' + msg + '\nLine: ' + lineNo + '\nCol: ' + columnNo);
+    return false;
+};
+
+console.log("NeuroRank Script Loaded");
+
 const App = {
     state: {
         routines: [],
@@ -19,19 +26,39 @@ const App = {
     },
 
     init: function() {
-        this.loadData();
-        this.processMissedTasks();
-        this.updateHeader();
-        this.render();
-        this.setupEventListeners();
-        this.registerServiceWorker();
-        
-        // Sync notification state with browser permission
-        if (Notification.permission === 'granted') {
-            this.state.notificationsEnabled = true;
-        }
+        const status = document.getElementById('debug-status');
+        try {
+            if (status) status.textContent = "BOOT: DATA";
+            this.loadData();
+            
+            if (status) status.textContent = "BOOT: MISSED";
+            this.processMissedTasks();
+            
+            if (status) status.textContent = "BOOT: HEADER";
+            this.updateHeader();
+            
+            if (status) status.textContent = "BOOT: RENDER";
+            this.render();
+            
+            if (status) status.textContent = "BOOT: EVENTS";
+            this.setupEventListeners();
+            
+            if (status) status.textContent = "BOOT: SW";
+            this.registerServiceWorker();
+            
+            if (status) status.textContent = "BOOT: SYNC";
+            if (window.Notification && Notification.permission === 'granted') {
+                this.state.notificationsEnabled = true;
+            }
 
-        this.startNotificationTimer();
+            if (status) status.textContent = "BOOT: TIMER";
+            this.startNotificationTimer();
+            
+            if (status) status.textContent = "READY";
+        } catch (e) {
+            if (status) status.textContent = "CRASH: " + e.message;
+            alert("App Init Crash: " + e.message);
+        }
     },
 
     registerServiceWorker: function() {
@@ -606,3 +633,11 @@ function closeModal() {
 }
 
 window.onload = () => App.init();
+
+// Aggressive init for iOS
+if (document.readyState === "complete" || document.readyState === "interactive") {
+    App.init();
+} else {
+    document.addEventListener("DOMContentLoaded", () => App.init());
+}
+
