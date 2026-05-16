@@ -72,22 +72,37 @@ const App = {
     },
 
     checkNotifications: function() {
-        if (!this.state.notificationsEnabled || Notification.permission !== "granted") return;
-        
+        const debugStatus = document.getElementById('debug-status');
+        const debugTime = document.getElementById('debug-time');
+        const debugEnabled = document.getElementById('debug-enabled');
+
         const now = new Date();
         const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         const dayOfWeek = now.getDay().toString();
         const dateKey = this.getDateKey();
 
-        const todaysTasks = this.state.routines.filter(r => r.days.includes(dayOfWeek));
+        if (debugTime) debugTime.textContent = currentTime;
+        if (debugEnabled) debugEnabled.textContent = `${this.state.notificationsEnabled}/${Notification.permission}`;
+
+        if (!this.state.notificationsEnabled || Notification.permission !== "granted") {
+            if (debugStatus) debugStatus.textContent = "ALERTS OFF";
+            return;
+        }
         
+        const todaysTasks = this.state.routines.filter(r => r.days.includes(dayOfWeek));
+        if (debugStatus) debugStatus.textContent = `CHECKING ${todaysTasks.length} TASKS`;
+
         todaysTasks.forEach(task => {
-            // Only notify if: it's time, enabled for this task, not already notified today, and NOT checked off
             if (task.time === currentTime && (task.notificationsEnabled !== false)) {
                 const notifyKey = dateKey + task.id;
+                
+                // Ensure lastNotified exists
+                if (!this.state.lastNotified) this.state.lastNotified = {};
+
                 if (!this.state.lastNotified[notifyKey]) {
                     const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
                     if (!isChecked) {
+                        if (debugStatus) debugStatus.textContent = "SENDING...";
                         this.sendNotification(task);
                         this.state.lastNotified[notifyKey] = true;
                         this.saveData();
