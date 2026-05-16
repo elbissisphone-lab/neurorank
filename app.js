@@ -17,21 +17,14 @@ const App = {
     },
 
     init: function() {
-        // 1. Setup listeners first so buttons work even if render fails
-        try {
-            this.setupEventListeners();
-        } catch (e) {
-            console.error("Listener Setup Failed:", e);
-        }
-
-        // 2. Load and Render
         try {
             this.loadData();
             this.processMissedTasks();
             this.updateHeader();
             this.render();
+            this.setupEventListeners();
         } catch (e) {
-            console.error("App Render Crash: " + e.message);
+            console.error("App Init Crash: " + e.message);
         }
     },
 
@@ -105,29 +98,122 @@ const App = {
         return "NOVICE ARCHITECT";
     },
 
+    processMissedTasks: function() {
+        const today = this.getDateKey();
+        if (!this.state.lastLoginDate) {
+            this.state.lastLoginDate = today;
+            this.saveData();
+            return;
+        }
+
+        if (this.state.lastLoginDate === today) return;
+
+        let d = new Date(this.state.lastLoginDate);
+        d.setDate(d.getDate() + 1);
+        const todayObj = new Date();
+        todayObj.setHours(0,0,0,0);
+
+        let penaltyApplied = false;
+
+        while (d < todayObj) {
+            const dateKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+            const dayOfWeek = d.getDay().toString();
+            
+            const scheduledRoutines = this.state.routines.filter(r => r.days.includes(dayOfWeek));
+            const completedIds = this.state.completions[dateKey] || [];
+
+            scheduledRoutines.forEach(routine => {
+                if (!completedIds.includes(routine.id)) {
+                    this.distributeXP(routine, -0.5);
+                    penaltyApplied = true;
+                }
+            });
+
+            d.setDate(d.getDate() + 1);
+        }
+
+        this.state.lastLoginDate = today;
+        this.saveData();
+
+        if (penaltyApplied) {
+            setTimeout(() => {
+                this.showAlert("DORMANT SESSIONS", "Significant inactivity detected. A 50% XP penalty has been applied to missed cognitive directives.");
+            }, 500);
+        }
+    },
+
+    distributeXP: function(routine, multiplier) {
+        const baseXP = routine.xpValue || 20;
+        const focus = routine.focus;
+        this.addXP(Math.floor(baseXP * multiplier), focus.primary);
+        if (focus.secondary && focus.secondary !== 'none') {
+            this.addXP(Math.floor((baseXP * 0.5) * multiplier), focus.secondary);
+        }
+        if (focus.tertiary && focus.tertiary !== 'none') {
+            this.addXP(Math.floor((baseXP * 0.25) * multiplier), focus.tertiary);
+        }
+    },
+
+    addXP: function(amount, func) {
+        if (!this.state.mastery[func]) return;
+        let m = this.state.mastery[func];
+        if (m.level >= 30 && amount > 0) return;
+        m.xp += amount;
+        if (m.xp < 0 && m.level === 1) m.xp = 0;
+        while (m.xp >= this.getXPRequired(m.level) && m.level < 30) {
+            m.xp -= this.getXPRequired(m.level);
+            m.level++;
+            if (amount > 0) this.showLevelUp(func, m.level);
+        }
+        while (m.level > 1 && m.xp < 0) {
+            m.level--;
+            m.xp += this.getXPRequired(m.level);
+        }
+    },
+
+    toggleTask: function(id) {
+        const dateKey = this.getDateKey();
+        if (!this.state.completions[dateKey]) this.state.completions[dateKey] = [];
+        const index = this.state.completions[dateKey].indexOf(id);
+        const routine = this.state.routines.find(r => r.id === id);
+        if (!routine) return;
+        if (index === -1) {
+            this.state.completions[dateKey].push(id);
+            this.distributeXP(routine, 1.0);
+            this.state.totalCompleted++;
+        } else {
+            this.state.completions[dateKey].splice(index, 1);
+            this.distributeXP(routine, -1.0);
+            this.state.totalCompleted = Math.max(0, this.state.totalCompleted - 1);
+        }
+        this.saveData();
+        this.render();
+    },
+
+    updateHeader: function() {
+        const now = new Date();
+        const options = { weekday: 'long', month: 'long', day: 'numeric' };
+        document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options).toUpperCase();
+        this.updateXPUI();
+    },
+
     updateXPUI: function() {
         const rankInfo = this.getRankInfo();
         const headerLevel = document.getElementById('header-level');
         if (headerLevel) headerLevel.textContent = `RANK ${rankInfo.rank}`;
-
-        // Header mini-bar
         const headerFill = document.getElementById('header-xp-fill');
         if (headerFill) {
             const headerProgress = (rankInfo.currentXP / rankInfo.nextReq) * 100;
             headerFill.style.width = `${headerProgress}%`;
         }
-
         const totalCompletedEl = document.getElementById('stat-total-completed');
         const activeRoutinesEl = document.getElementById('stat-active-routines');
         if (totalCompletedEl) totalCompletedEl.textContent = this.state.totalCompleted;
         if (activeRoutinesEl) activeRoutinesEl.textContent = this.state.routines.length;
-
-        // Mastery Card in Progress View
         const masteryLevel = document.getElementById('mastery-level');
         const masteryRank = document.querySelector('.mastery-rank');
         const xpRatio = document.getElementById('xp-ratio');
         const masteryFill = document.getElementById('mastery-xp-fill');
-
         if (masteryLevel) masteryLevel.textContent = `RANK ${rankInfo.rank}`;
         if (masteryRank) masteryRank.textContent = this.getRankTitle(rankInfo.rank);
         if (xpRatio) xpRatio.textContent = `${Math.floor(rankInfo.currentXP)} / ${rankInfo.nextReq} XP`;
@@ -135,50 +221,35 @@ const App = {
             const progress = (rankInfo.currentXP / rankInfo.nextReq) * 100;
             masteryFill.style.width = `${progress}%`;
         }
-
         this.renderMasteryGrid();
     },
 
     renderMasteryGrid: function() {
         const viewProgress = document.getElementById('view-progress');
         if (viewProgress && viewProgress.offsetParent === null) return;
-
         const container = document.getElementById('mastery-grid') || this.createMasteryGrid();
         container.innerHTML = '';
-
         Object.entries(this.state.mastery).forEach(([func, data]) => {
             const xpReq = this.getXPRequired(data.level);
             const progress = data.level >= 30 ? 100 : (data.xp / xpReq) * 100;
             const card = document.createElement('div');
             card.className = 'function-mastery-card';
-            card.innerHTML = `
-                <div class="func-header">
-                    <span class="func-name">${func} Focus</span>
-                    <span class="func-level">LVL ${data.level}</span>
-                </div>
-                <div class="xp-mini-bar" style="width: 100%; height: 6px; margin: 10px 0;"><div class="xp-mini-fill" style="width: ${progress}%"></div></div>
-                <div class="func-xp-text">${data.level >= 30 ? 'MAX' : `${data.xp}/${xpReq} XP`}</div>
-            `;
+            card.innerHTML = `<div class="func-header"><span class="func-name">${func} Focus</span><span class="func-level">LVL ${data.level}</span></div><div class="xp-mini-bar" style="width: 100%; height: 6px; margin: 10px 0;"><div class="xp-mini-fill" style="width: ${progress}%"></div></div><div class="func-xp-text">${data.level >= 30 ? 'MAX' : `${data.xp}/${xpReq} XP`}</div>`;
             container.appendChild(card);
         });
-
         this.renderCalculator();
     },
 
     renderCalculator: function() {
         const selector = document.getElementById('calc-routine-selector');
         if (!selector) return;
-
         const currentVal = selector.value;
         selector.innerHTML = '<option value="">Select Routine...</option>';
-        
         this.state.routines.forEach(r => {
             const option = document.createElement('option');
-            option.value = r.id;
-            option.textContent = r.name;
+            option.value = r.id; option.textContent = r.name;
             selector.appendChild(option);
         });
-
         if (currentVal) selector.value = currentVal;
     },
 
@@ -186,65 +257,29 @@ const App = {
         const routineId = document.getElementById('calc-routine-selector').value;
         const targetLevel = parseInt(document.getElementById('calc-level-selector').value);
         const output = document.getElementById('prediction-output');
-
         if (!routineId) {
             output.innerHTML = '<div class="result-placeholder">Select a routine to analyze path to mastery.</div>';
             return;
         }
-
         const routine = this.state.routines.find(r => r.id === routineId);
         const primaryFunc = routine.focus.primary;
         const currentData = this.state.mastery[primaryFunc];
-        
         if (currentData.level >= targetLevel) {
             output.innerHTML = `<div class="result-placeholder" style="color: var(--gold)">Target achieved. You have already mastered ${primaryFunc} to Level ${targetLevel} or higher.</div>`;
             return;
         }
-
-        // Calculate Cumulative XP Needed
-        let totalXPNeeded = 0;
-        
-        // 1. XP for current level's remainder
-        totalXPNeeded += (this.getXPRequired(currentData.level) - currentData.xp);
-
-        // 2. XP for all intermediate levels
-        for (let l = currentData.level + 1; l < targetLevel; l++) {
-            totalXPNeeded += this.getXPRequired(l);
-        }
-
+        let totalXPNeeded = (this.getXPRequired(currentData.level) - currentData.xp);
+        for (let l = currentData.level + 1; l < targetLevel; l++) { totalXPNeeded += this.getXPRequired(l); }
         const completions = Math.ceil(totalXPNeeded / (routine.xpValue || 20));
         const daysPerWeek = routine.days.length;
-        
         let timeEstimate = "";
         if (daysPerWeek > 0) {
             const totalDays = Math.ceil((completions / daysPerWeek) * 7);
-            if (totalDays < 30) {
-                timeEstimate = `${Math.ceil(totalDays / 7)} Weeks`;
-            } else {
-                timeEstimate = `${(totalDays / 30.44).toFixed(1)} Months`;
-            }
+            timeEstimate = totalDays < 30 ? `${Math.ceil(totalDays / 7)} Weeks` : `${(totalDays / 30.44).toFixed(1)} Months`;
         } else {
             timeEstimate = "Not Scheduled";
         }
-
-        output.innerHTML = `
-            <div class="prediction-data">
-                <div class="pred-item">
-                    <span class="pred-label">Target Mastery [${primaryFunc}]</span>
-                    <span class="pred-value">Lvl ${targetLevel}</span>
-                </div>
-                <div class="pred-item">
-                    <span class="pred-label">Required Completions</span>
-                    <span class="pred-value">${completions}</span>
-                </div>
-                <div class="pred-sub">At ${routine.xpValue || 20} XP per session</div>
-                <div class="pred-item" style="margin-top: 10px;">
-                    <span class="pred-label">Estimated Timeline</span>
-                    <span class="pred-value">${timeEstimate}</span>
-                </div>
-                <div class="pred-sub">Based on ${daysPerWeek} days/week frequency</div>
-            </div>
-        `;
+        output.innerHTML = `<div class="prediction-data"><div class="pred-item"><span class="pred-label">Target Mastery [${primaryFunc}]</span><span class="pred-value">Lvl ${targetLevel}</span></div><div class="pred-item"><span class="pred-label">Required Completions</span><span class="pred-value">${completions}</span></div><div class="pred-sub">At ${routine.xpValue || 20} XP per session</div><div class="pred-item" style="margin-top: 10px;"><span class="pred-label">Estimated Timeline</span><span class="pred-value">${timeEstimate}</span></div><div class="pred-sub">Based on ${daysPerWeek} days/week frequency</div></div>`;
     },
 
     createMasteryGrid: function() {
@@ -252,15 +287,9 @@ const App = {
         let grid = document.getElementById('mastery-grid');
         if (!grid) {
             grid = document.createElement('div');
-            grid.id = 'mastery-grid'; 
-            grid.className = 'mastery-grid-v3';
-            // Insert after the Rank dashboard (mastery-card)
+            grid.id = 'mastery-grid'; grid.className = 'mastery-grid-v3';
             const masteryCard = view.querySelector('.mastery-card');
-            if (masteryCard) {
-                masteryCard.after(grid);
-            } else {
-                view.prepend(grid);
-            }
+            if (masteryCard) { masteryCard.after(grid); } else { view.prepend(grid); }
         }
         return grid;
     },
@@ -275,25 +304,16 @@ const App = {
         const todayList = document.getElementById('today-list');
         const dayOfWeek = new Date().getDay().toString();
         const dateKey = this.getDateKey();
-
         let todaysTasks = this.state.routines.filter(r => r.days.includes(dayOfWeek));
         todaysTasks.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
-
         document.getElementById('today-count').textContent = `${todaysTasks.length} DIRECTIVES`;
         todayList.innerHTML = todaysTasks.length === 0 ? '<div class="empty-state">No directives today.</div>' : '';
-
         todaysTasks.forEach(task => {
             const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
             const card = document.createElement('div');
             card.className = 'task-card';
             const stack = [task.focus.primary, task.focus.secondary, task.focus.tertiary].filter(f => f && f !== 'none').join(' / ');
-            card.innerHTML = `
-                <div class="task-info">
-                    <span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span>
-                    <span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span>
-                </div>
-                <div class="checkbox ${isChecked ? 'checked' : ''}" onclick="App.toggleTask('${task.id}')"></div>
-            `;
+            card.innerHTML = `<div class="task-info"><span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span><span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span></div><div class="checkbox ${isChecked ? 'checked' : ''}" onclick="App.toggleTask('${task.id}')"></div>`;
             todayList.appendChild(card);
         });
     },
@@ -301,21 +321,11 @@ const App = {
     renderManage: function() {
         const fullList = document.getElementById('full-routine-list');
         fullList.innerHTML = this.state.routines.length === 0 ? '<div class="empty-state">No routines architecture defined.</div>' : '';
-
         this.state.routines.forEach(task => {
             const card = document.createElement('div');
             card.className = 'task-card';
             const stack = [task.focus.primary, task.focus.secondary, task.focus.tertiary].filter(f => f && f !== 'none').join(' / ');
-            card.innerHTML = `
-                <div class="task-info">
-                    <span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span>
-                    <span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span>
-                </div>
-                <div class="task-actions">
-                    <button class="btn-edit" onclick="App.editRoutine('${task.id}')">EDIT</button>
-                    <button class="btn-delete" onclick="App.deleteRoutine('${task.id}')">REMOVE</button>
-                </div>
-            `;
+            card.innerHTML = `<div class="task-info"><span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span><span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span></div><div class="task-actions"><button class="btn-edit" onclick="App.editRoutine('${task.id}')">EDIT</button><button class="btn-delete" onclick="App.deleteRoutine('${task.id}')">REMOVE</button></div>`;
             fullList.appendChild(card);
         });
     },
@@ -343,7 +353,6 @@ const App = {
     editRoutine: function(id) {
         const routine = this.state.routines.find(r => r.id === id);
         if (!routine) return;
-
         document.getElementById('editing-task-id').value = routine.id;
         document.getElementById('task-name').value = routine.name;
         document.getElementById('task-focus-primary').value = routine.focus.primary;
@@ -353,7 +362,6 @@ const App = {
         document.getElementById('task-importance').value = routine.importance || "6";
         document.getElementById('task-difficulty').value = routine.difficulty || "6";
         document.getElementById('task-duration').value = routine.duration || "30";
-
         document.querySelectorAll('.days-selector input').forEach(cb => { cb.checked = routine.days.includes(cb.value); });
         document.getElementById('modal-title').textContent = "Edit Routine";
         document.getElementById('btn-submit-task').textContent = "UPDATE ROUTINE";
@@ -386,60 +394,44 @@ const App = {
                 const duration = document.getElementById('task-duration').value;
                 const xpValue = parseInt(importance) + parseInt(difficulty) + parseInt(duration);
                 const days = Array.from(document.querySelectorAll('.days-selector input:checked')).map(i => i.value);
-
                 if (days.length === 0) return alert('Select at least one day.');
-
                 if (id) {
-                    const idx = App.state.routines.findIndex(r => r.id === id);
-                    if (idx !== -1) App.state.routines[idx] = { ...App.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration };
+                    const idx = this.state.routines.findIndex(r => r.id === id);
+                    if (idx !== -1) this.state.routines[idx] = { ...this.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration };
                 } else {
-                    App.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration });
+                    this.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration });
                 }
-
-                App.saveData(); App.render(); closeModal();
+                this.saveData(); this.render(); closeModal();
             };
         }
 
-        // Hard Reset Logic (Pointer Events for Touch/Mouse reliability)
         const resetBtn = document.getElementById('reset-btn');
         const resetFill = document.getElementById('reset-fill');
-        
         if (resetBtn && resetFill) {
-            const resetBar = resetFill.parentElement;
             let resetTimer = null;
             let resetStartTime = 0;
-
             const startReset = (e) => {
                 e.preventDefault();
                 resetStartTime = Date.now();
                 resetFill.style.width = '0%';
-                if (resetBar) resetBar.style.opacity = '1';
                 resetBtn.textContent = "RESETTING DATA...";
                 resetBtn.style.background = "rgba(255, 68, 68, 0.15)";
-                
                 resetTimer = setInterval(() => {
                     const elapsed = Date.now() - resetStartTime;
                     const progress = Math.min((elapsed / 5000) * 100, 100);
                     resetFill.style.width = progress + '%';
-
-                    if (elapsed >= 5000) {
-                        clearInterval(resetTimer);
-                        App.hardReset();
-                    }
+                    if (elapsed >= 5000) { clearInterval(resetTimer); this.hardReset(); }
                 }, 50);
             };
-
-            const cancelReset = (e) => {
+            const cancelReset = () => {
                 if (resetTimer) {
                     clearInterval(resetTimer);
                     resetTimer = null;
                     resetFill.style.width = '0%';
-                    if (resetBar) resetBar.style.opacity = '0.3';
                     resetBtn.textContent = "RESET ALL PROGRESS (HOLD 5S)";
                     resetBtn.style.background = "none";
                 }
             };
-
             resetBtn.addEventListener('pointerdown', startReset);
             resetBtn.addEventListener('pointerup', cancelReset);
             resetBtn.addEventListener('pointerleave', cancelReset);
@@ -448,32 +440,17 @@ const App = {
         }
     },
 
-    // Custom UI Components
     showAlert: function(title, message, callback = null) {
-        // Remove any existing alerts first
         const existing = document.querySelector('.custom-alert');
         if (existing) existing.remove();
-
         const overlay = document.createElement('div');
         overlay.className = 'custom-alert';
-        overlay.innerHTML = `
-            <div class="alert-card">
-                <h3 class="alert-title">${title}</h3>
-                <p class="alert-msg">${message}</p>
-                <button class="alert-btn" id="alert-confirm-btn" style="cursor: pointer; -webkit-appearance: none;">CONTINUE</button>
-            </div>
-        `;
+        overlay.innerHTML = `<div class="alert-card"><h3 class="alert-title">${title}</h3><p class="alert-msg">${message}</p><button class="alert-btn" id="alert-confirm-btn" style="cursor: pointer; -webkit-appearance: none;">CONTINUE</button></div>`;
         document.body.appendChild(overlay);
-        
         const btn = document.getElementById('alert-confirm-btn');
-        const handleConfirm = (e) => {
-            if (e) e.preventDefault();
-            overlay.remove();
-            if (callback) callback();
-        };
-
+        const handleConfirm = (e) => { if (e) e.preventDefault(); overlay.remove(); if (callback) callback(); };
         btn.addEventListener('click', handleConfirm);
-        btn.addEventListener('touchend', handleConfirm); // Backup for iOS touch
+        btn.addEventListener('touchend', handleConfirm);
     },
 
     hardReset: function() {
@@ -491,7 +468,6 @@ function switchView(viewId, el) {
     el.classList.add('active');
     if (viewId === 'progress') App.renderMasteryGrid();
 }
-
 function openModal() { document.getElementById('task-modal').classList.add('active'); }
 function closeModal() { 
     document.getElementById('task-modal').classList.remove('active'); 
@@ -500,13 +476,4 @@ function closeModal() {
     document.getElementById('modal-title').textContent = "New Task";
     document.getElementById('btn-submit-task').textContent = "ADD ROUTINE";
 }
-
-window.onload = () => App.init();
-
-// Aggressive init for iOS
-if (document.readyState === "complete" || document.readyState === "interactive") {
-    App.init();
-} else {
-    document.addEventListener("DOMContentLoaded", () => App.init());
-}
-
+App.init();
