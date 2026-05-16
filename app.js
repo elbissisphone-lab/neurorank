@@ -17,14 +17,21 @@ const App = {
     },
 
     init: function() {
+        // 1. Setup listeners first so buttons work even if render fails
+        try {
+            this.setupEventListeners();
+        } catch (e) {
+            console.error("Listener Setup Failed:", e);
+        }
+
+        // 2. Load and Render
         try {
             this.loadData();
             this.processMissedTasks();
             this.updateHeader();
             this.render();
-            this.setupEventListeners();
         } catch (e) {
-            console.error("App Init Crash: " + e.message);
+            console.error("App Render Crash: " + e.message);
         }
     },
 
@@ -383,28 +390,27 @@ const App = {
                 if (days.length === 0) return alert('Select at least one day.');
 
                 if (id) {
-                    const idx = this.state.routines.findIndex(r => r.id === id);
-                    if (idx !== -1) this.state.routines[idx] = { ...this.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration };
+                    const idx = App.state.routines.findIndex(r => r.id === id);
+                    if (idx !== -1) App.state.routines[idx] = { ...App.state.routines[idx], name, focus, days, time, xpValue, importance, difficulty, duration };
                 } else {
-                    this.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration });
+                    App.state.routines.push({ id: 'rt-' + Date.now(), name, focus, days, time, xpValue, importance, difficulty, duration });
                 }
 
-                this.saveData(); this.render(); closeModal();
+                App.saveData(); App.render(); closeModal();
             };
         }
 
         // Hard Reset Logic (Pointer Events for Touch/Mouse reliability)
         const resetBtn = document.getElementById('reset-btn');
         const resetFill = document.getElementById('reset-fill');
-        const resetBar = resetFill ? resetFill.parentElement : null;
-        let resetTimer = null;
-        let resetStartTime = 0;
-
+        
         if (resetBtn && resetFill) {
+            const resetBar = resetFill.parentElement;
+            let resetTimer = null;
+            let resetStartTime = 0;
+
             const startReset = (e) => {
-                // Prevent scrolling/selection on iPhone during hold
                 e.preventDefault();
-                
                 resetStartTime = Date.now();
                 resetFill.style.width = '0%';
                 if (resetBar) resetBar.style.opacity = '1';
@@ -418,7 +424,7 @@ const App = {
 
                     if (elapsed >= 5000) {
                         clearInterval(resetTimer);
-                        this.hardReset();
+                        App.hardReset();
                     }
                 }, 50);
             };
@@ -434,7 +440,6 @@ const App = {
                 }
             };
 
-            // Enhanced event listeners for iOS
             resetBtn.addEventListener('pointerdown', startReset);
             resetBtn.addEventListener('pointerup', cancelReset);
             resetBtn.addEventListener('pointerleave', cancelReset);
