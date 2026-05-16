@@ -2,13 +2,6 @@
  * Elite Routines - Application Logic V5 (Multi-Function & Penalties)
  */
 
-window.onerror = function(msg, url, lineNo, columnNo, error) {
-    alert('GLOBAL ERROR: ' + msg + '\nLine: ' + lineNo + '\nCol: ' + columnNo);
-    return false;
-};
-
-console.log("NeuroRank Script Loaded");
-
 const App = {
     state: {
         routines: [],
@@ -70,137 +63,71 @@ const App = {
         return Math.floor(100 + (level * 20));
     },
 
-    processMissedTasks: function() {
-        const today = this.getDateKey();
-        if (!this.state.lastLoginDate) {
-            this.state.lastLoginDate = today;
-            this.saveData();
-            return;
+    getFunctionCumulativeXP: function(funcData) {
+        let total = funcData.xp;
+        for (let l = 1; l < funcData.level; l++) {
+            total += this.getXPRequired(l);
         }
-
-        if (this.state.lastLoginDate === today) return;
-
-        // Find all dates between lastLogin and today (exclusive of today)
-        let d = new Date(this.state.lastLoginDate);
-        d.setDate(d.getDate() + 1); // Start with day after last login
-        const todayObj = new Date();
-        todayObj.setHours(0,0,0,0);
-
-        let penaltyApplied = false;
-
-        while (d < todayObj) {
-            const dateKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
-            const dayOfWeek = d.getDay().toString();
-            
-            const scheduledRoutines = this.state.routines.filter(r => r.days.includes(dayOfWeek));
-            const completedIds = this.state.completions[dateKey] || [];
-
-            scheduledRoutines.forEach(routine => {
-                if (!completedIds.includes(routine.id)) {
-                    // APPLY 50% PENALTY
-                    this.distributeXP(routine, -0.5);
-                    penaltyApplied = true;
-                }
-            });
-
-            d.setDate(d.getDate() + 1);
-        }
-
-        this.state.lastLoginDate = today;
-        this.saveData();
-
-        if (penaltyApplied) {
-            setTimeout(() => {
-                this.showAlert("DORMANT SESSIONS", "Significant inactivity detected. A 50% XP penalty has been applied to missed cognitive directives.");
-            }, 500);
-        }
+        return total;
     },
 
-    distributeXP: function(routine, multiplier) {
-        // Multiplier is 1.0 for completion, -1.0 for unchecking, -0.5 for penalty
-        const baseXP = routine.xpValue || 20;
-        const focus = routine.focus;
-
-        // Primary (100%)
-        this.addXP(Math.floor(baseXP * multiplier), focus.primary);
-
-        // Secondary (50%)
-        if (focus.secondary && focus.secondary !== 'none') {
-            this.addXP(Math.floor((baseXP * 0.5) * multiplier), focus.secondary);
+    getRankInfo: function() {
+        const totalXP = Object.values(this.state.mastery).reduce((sum, m) => sum + this.getFunctionCumulativeXP(m), 0);
+        let rank = 1;
+        let tempXP = totalXP;
+        while (rank < 30) {
+            let req = this.getXPRequired(rank) * 8;
+            if (tempXP >= req) {
+                tempXP -= req;
+                rank++;
+            } else {
+                break;
+            }
         }
-
-        // Tertiary (25%)
-        if (focus.tertiary && focus.tertiary !== 'none') {
-            this.addXP(Math.floor((baseXP * 0.25) * multiplier), focus.tertiary);
-        }
+        const nextReq = this.getXPRequired(rank) * 8;
+        return { rank, currentXP: tempXP, nextReq, totalXP };
     },
 
-    addXP: function(amount, func) {
-        if (!this.state.mastery[func]) return;
-        let m = this.state.mastery[func];
-
-        // Cap Level 30
-        if (m.level >= 30 && amount > 0) return;
-
-        m.xp += amount;
-        if (m.xp < 0 && m.level === 1) m.xp = 0;
-
-        // Level Up
-        while (m.xp >= this.getXPRequired(m.level) && m.level < 30) {
-            m.xp -= this.getXPRequired(m.level);
-            m.level++;
-            if (amount > 0) this.showLevelUp(func, m.level); // Only show overlay on positive gain
-        }
-        
-        // Level Down
-        while (m.level > 1 && m.xp < 0) {
-            m.level--;
-            m.xp += this.getXPRequired(m.level);
-        }
-    },
-
-    toggleTask: function(id) {
-        const dateKey = this.getDateKey();
-        if (!this.state.completions[dateKey]) this.state.completions[dateKey] = [];
-
-        const index = this.state.completions[dateKey].indexOf(id);
-        const routine = this.state.routines.find(r => r.id === id);
-        if (!routine) return;
-
-        if (index === -1) {
-            this.state.completions[dateKey].push(id);
-            this.distributeXP(routine, 1.0);
-            this.state.totalCompleted++;
-        } else {
-            this.state.completions[dateKey].splice(index, 1);
-            this.distributeXP(routine, -1.0);
-            this.state.totalCompleted = Math.max(0, this.state.totalCompleted - 1);
-        }
-
-        this.saveData();
-        this.render();
-    },
-
-    updateHeader: function() {
-        const now = new Date();
-        const options = { weekday: 'long', month: 'long', day: 'numeric' };
-        document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options).toUpperCase();
-        
-        // Dynamic greeting handled by a specific span if we want, or just leave as is.
-        // Let's add a small greeting span below NeuroRank for that premium feel.
-        this.updateXPUI();
+    getRankTitle: function(level) {
+        if (level >= 30) return "MASTER ARCHITECT";
+        if (level >= 25) return "ELITE ARCHITECT";
+        if (level >= 20) return "EXPERT ARCHITECT";
+        if (level >= 15) return "PROFESSIONAL ARCHITECT";
+        if (level >= 10) return "ADVANCED ARCHITECT";
+        if (level >= 5) return "APPRENTICE ARCHITECT";
+        return "NOVICE ARCHITECT";
     },
 
     updateXPUI: function() {
-        const totalLevels = Object.values(this.state.mastery).reduce((sum, m) => sum + m.level, 0);
-        const avgLevel = Math.floor(totalLevels / 8);
+        const rankInfo = this.getRankInfo();
         const headerLevel = document.getElementById('header-level');
-        if (headerLevel) headerLevel.textContent = `Rank ${avgLevel}`;
+        if (headerLevel) headerLevel.textContent = `RANK ${rankInfo.rank}`;
+
+        // Header mini-bar
+        const headerFill = document.getElementById('header-xp-fill');
+        if (headerFill) {
+            const headerProgress = (rankInfo.currentXP / rankInfo.nextReq) * 100;
+            headerFill.style.width = `${headerProgress}%`;
+        }
 
         const totalCompletedEl = document.getElementById('stat-total-completed');
         const activeRoutinesEl = document.getElementById('stat-active-routines');
         if (totalCompletedEl) totalCompletedEl.textContent = this.state.totalCompleted;
         if (activeRoutinesEl) activeRoutinesEl.textContent = this.state.routines.length;
+
+        // Mastery Card in Progress View
+        const masteryLevel = document.getElementById('mastery-level');
+        const masteryRank = document.querySelector('.mastery-rank');
+        const xpRatio = document.getElementById('xp-ratio');
+        const masteryFill = document.getElementById('mastery-xp-fill');
+
+        if (masteryLevel) masteryLevel.textContent = `RANK ${rankInfo.rank}`;
+        if (masteryRank) masteryRank.textContent = this.getRankTitle(rankInfo.rank);
+        if (xpRatio) xpRatio.textContent = `${Math.floor(rankInfo.currentXP)} / ${rankInfo.nextReq} XP`;
+        if (masteryFill) {
+            const progress = (rankInfo.currentXP / rankInfo.nextReq) * 100;
+            masteryFill.style.width = `${progress}%`;
+        }
 
         this.renderMasteryGrid();
     },
