@@ -568,16 +568,10 @@ select {
     cursor: pointer;
 }
 
-/* Day Selector Improvements */
-.days-selector span {
-    border: 1px solid rgba(212, 175, 55, 0.1);
-    font-weight: 500;
-    font-family: 'Inter', sans-serif;
-}
-
-.days-selector input:checked + span {
-    box-shadow: 0 0 15px var(--gold-dim);
-    border-color: var(--gold-light);
+.days-selector {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
 }
 
 .days-selector label {
@@ -599,12 +593,15 @@ select {
     font-size: 0.8rem;
     color: var(--text-dim);
     transition: all 0.2s;
+    border: 1px solid rgba(212, 175, 55, 0.1);
 }
 
 .days-selector input:checked + span {
     background: var(--gold);
     color: var(--bg);
     font-weight: bold;
+    box-shadow: 0 0 15px var(--gold-dim);
+    border-color: var(--gold-light);
 }
 
 .btn-save {
