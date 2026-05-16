@@ -62,6 +62,12 @@ const App = {
     startNotificationTimer: function() {
         setInterval(() => {
             this.checkNotifications();
+            // Heartbeat for debugging: pulse the test button if it exists
+            const testBtn = document.getElementById('test-notify');
+            if (testBtn) {
+                testBtn.style.borderColor = 'var(--gold)';
+                setTimeout(() => { testBtn.style.borderColor = 'var(--gold-dim)'; }, 500);
+            }
         }, 30000); // Check every 30 seconds
     },
 
