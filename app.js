@@ -242,11 +242,19 @@ const App = {
 
     createMasteryGrid: function() {
         const view = document.getElementById('view-progress');
-        const old = view.querySelector('.mastery-card');
-        if (old) old.remove();
-        const grid = document.createElement('div');
-        grid.id = 'mastery-grid'; grid.className = 'mastery-grid-v3';
-        view.insertBefore(grid, view.querySelector('.stats-grid'));
+        let grid = document.getElementById('mastery-grid');
+        if (!grid) {
+            grid = document.createElement('div');
+            grid.id = 'mastery-grid'; 
+            grid.className = 'mastery-grid-v3';
+            // Insert after the Rank dashboard (mastery-card)
+            const masteryCard = view.querySelector('.mastery-card');
+            if (masteryCard) {
+                masteryCard.after(grid);
+            } else {
+                view.prepend(grid);
+            }
+        }
         return grid;
     },
 
