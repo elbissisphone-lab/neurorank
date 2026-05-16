@@ -465,14 +465,14 @@ const App = {
 
         if (resetBtn && resetFill) {
             const startReset = (e) => {
-                // Critical for iOS: Prevent browser behavior during hold
+                // Prevent scrolling/selection on iPhone during hold
                 e.preventDefault();
                 
                 resetStartTime = Date.now();
                 resetFill.style.width = '0%';
                 if (resetBar) resetBar.style.opacity = '1';
-                resetBtn.textContent = "INITIATING CORE PURGE...";
-                resetBtn.style.background = "rgba(255, 68, 68, 0.2)";
+                resetBtn.textContent = "RESETTING DATA...";
+                resetBtn.style.background = "rgba(255, 68, 68, 0.15)";
                 
                 resetTimer = setInterval(() => {
                     const elapsed = Date.now() - resetStartTime;
@@ -487,27 +487,28 @@ const App = {
             };
 
             const cancelReset = (e) => {
-                clearInterval(resetTimer);
-                resetFill.style.width = '0%';
-                if (resetBar) resetBar.style.opacity = '0.3';
-                resetBtn.textContent = "HOLD TO RESET SYSTEM CORE (5S)";
-                resetBtn.style.background = "none";
+                if (resetTimer) {
+                    clearInterval(resetTimer);
+                    resetTimer = null;
+                    resetFill.style.width = '0%';
+                    if (resetBar) resetBar.style.opacity = '0.3';
+                    resetBtn.textContent = "RESET ALL PROGRESS (HOLD 5S)";
+                    resetBtn.style.background = "none";
+                }
             };
 
-            // Unified Pointer Events
+            // Enhanced event listeners for iOS
             resetBtn.addEventListener('pointerdown', startReset);
             resetBtn.addEventListener('pointerup', cancelReset);
             resetBtn.addEventListener('pointerleave', cancelReset);
-            resetBtn.addEventListener('pointercancel', cancelReset); // Crucial for iOS interruptions
-            
-            // Prevent context menu (long-press popup) on iPhone
+            resetBtn.addEventListener('pointercancel', cancelReset);
             resetBtn.addEventListener('contextmenu', e => e.preventDefault());
         }
     },
 
     hardReset: function() {
         localStorage.clear();
-        alert("SYSTEM PURGED. REBOOTING...");
+        alert("Application data has been reset.");
         window.location.reload();
     }
 };
