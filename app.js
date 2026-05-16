@@ -465,16 +465,14 @@ const App = {
 
         if (resetBtn && resetFill) {
             const startReset = (e) => {
-                // Prevent scrolling and default context menus during hold
-                if (e.pointerType === 'touch') {
-                    resetBtn.style.touchAction = 'none';
-                }
+                // Critical for iOS: Prevent browser behavior during hold
+                e.preventDefault();
                 
                 resetStartTime = Date.now();
                 resetFill.style.width = '0%';
                 if (resetBar) resetBar.style.opacity = '1';
-                resetBtn.textContent = "INITIATING PURGE...";
-                resetBtn.style.borderColor = "#ff4444";
+                resetBtn.textContent = "INITIATING CORE PURGE...";
+                resetBtn.style.background = "rgba(255, 68, 68, 0.2)";
                 
                 resetTimer = setInterval(() => {
                     const elapsed = Date.now() - resetStartTime;
@@ -488,25 +486,28 @@ const App = {
                 }, 50);
             };
 
-            const cancelReset = () => {
+            const cancelReset = (e) => {
                 clearInterval(resetTimer);
                 resetFill.style.width = '0%';
                 if (resetBar) resetBar.style.opacity = '0.3';
-                resetBtn.textContent = "HOLD TO RESET ARCHITECTURE (5S)";
-                resetBtn.style.borderColor = "rgba(255, 68, 68, 0.3)";
-                resetBtn.style.touchAction = 'auto';
+                resetBtn.textContent = "HOLD TO RESET SYSTEM CORE (5S)";
+                resetBtn.style.background = "none";
             };
 
+            // Unified Pointer Events
             resetBtn.addEventListener('pointerdown', startReset);
             resetBtn.addEventListener('pointerup', cancelReset);
             resetBtn.addEventListener('pointerleave', cancelReset);
+            resetBtn.addEventListener('pointercancel', cancelReset); // Crucial for iOS interruptions
+            
+            // Prevent context menu (long-press popup) on iPhone
             resetBtn.addEventListener('contextmenu', e => e.preventDefault());
         }
     },
 
     hardReset: function() {
         localStorage.clear();
-        alert("ARCHITECTURE PURGED. System rebooting...");
+        alert("SYSTEM PURGED. REBOOTING...");
         window.location.reload();
     }
 };
