@@ -31,22 +31,29 @@ const App = {
     registerServiceWorker: function() {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('SW Registered'))
-                .catch(err => console.log('SW Failed', err));
+                .then(reg => {
+                    console.log('SW Registered');
+                    // Removed diagnostic alert for production, but keeping logic
+                })
+                .catch(err => alert('SW Registration Failed: ' + err));
+        } else {
+            alert('Service Workers are not supported in this browser.');
         }
     },
 
     requestNotificationPermission: function() {
         if (!('Notification' in window)) {
-            alert("This browser does not support notifications.");
+            alert("Notification API not found. If you are on iPhone, you MUST use 'Add to Home Screen' first.");
             return;
         }
 
+        alert("Current Permission: " + Notification.permission);
+
         Notification.requestPermission().then(permission => {
+            alert("New Permission Status: " + permission);
             if (permission === "granted") {
                 this.state.notificationsEnabled = true;
                 this.saveData();
-                alert("Notifications Enabled!");
                 this.render();
             }
         });
@@ -93,23 +100,31 @@ const App = {
                     badge: 'logo.png',
                     vibrate: [200, 100, 200]
                 });
-            });
+            }).catch(err => alert("Notification Error: " + err));
         }
     },
 
     sendTestNotification: function() {
+        if (!('Notification' in window)) {
+            alert("Notification API not found.");
+            return;
+        }
+
         if (Notification.permission !== "granted") {
-            alert("Please enable notifications first by tapping the Bell icon.");
+            alert("Permission not granted. Status: " + Notification.permission);
             return;
         }
         
+        alert("Attempting to trigger notification via SW...");
+        
         navigator.serviceWorker.ready.then(registration => {
+            alert("Service Worker Ready. Sending...");
             registration.showNotification("NeuroRank Test", {
                 body: "If you see this, notifications are working correctly!",
                 icon: 'logo.png',
                 vibrate: [200, 100, 200]
             });
-        });
+        }).catch(err => alert("SW Ready Error: " + err));
     },
 
     loadData: function() {
