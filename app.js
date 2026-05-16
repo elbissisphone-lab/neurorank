@@ -97,6 +97,21 @@ const App = {
         }
     },
 
+    sendTestNotification: function() {
+        if (Notification.permission !== "granted") {
+            alert("Please enable notifications first by tapping the Bell icon.");
+            return;
+        }
+        
+        navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification("NeuroRank Test", {
+                body: "If you see this, notifications are working correctly!",
+                icon: 'logo.png',
+                vibrate: [200, 100, 200]
+            });
+        });
+    },
+
     loadData: function() {
         const saved = localStorage.getItem('elite_app_state_v5');
         if (saved) {
