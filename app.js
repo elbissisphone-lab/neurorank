@@ -110,7 +110,9 @@ const App = {
         this.saveData();
 
         if (penaltyApplied) {
-            setTimeout(() => alert("DORMANT SESSIONS DETECTED: 50% penalty applied to missed cognitive directives."), 500);
+            setTimeout(() => {
+                this.showAlert("DORMANT SESSIONS", "Significant inactivity detected. A 50% XP penalty has been applied to missed cognitive directives.");
+            }, 500);
         }
     },
 
@@ -506,10 +508,30 @@ const App = {
         }
     },
 
+    // Custom UI Components
+    showAlert: function(title, message, callback = null) {
+        const overlay = document.createElement('div');
+        overlay.className = 'custom-alert';
+        overlay.innerHTML = `
+            <div class="alert-card">
+                <h3 class="alert-title">${title}</h3>
+                <p class="alert-msg">${message}</p>
+                <button class="alert-btn" id="alert-confirm-btn">CONTINUE</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        document.getElementById('alert-confirm-btn').onclick = () => {
+            overlay.remove();
+            if (callback) callback();
+        };
+    },
+
     hardReset: function() {
         localStorage.clear();
-        alert("Application data has been reset.");
-        window.location.reload();
+        this.showAlert("SYSTEM RESET", "All application data and progress have been successfully cleared.", () => {
+            window.location.reload();
+        });
     }
 };
 
