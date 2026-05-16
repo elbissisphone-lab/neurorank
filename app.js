@@ -510,21 +510,30 @@ const App = {
 
     // Custom UI Components
     showAlert: function(title, message, callback = null) {
+        // Remove any existing alerts first
+        const existing = document.querySelector('.custom-alert');
+        if (existing) existing.remove();
+
         const overlay = document.createElement('div');
         overlay.className = 'custom-alert';
         overlay.innerHTML = `
             <div class="alert-card">
                 <h3 class="alert-title">${title}</h3>
                 <p class="alert-msg">${message}</p>
-                <button class="alert-btn" id="alert-confirm-btn">CONTINUE</button>
+                <button class="alert-btn" id="alert-confirm-btn" style="cursor: pointer; -webkit-appearance: none;">CONTINUE</button>
             </div>
         `;
         document.body.appendChild(overlay);
         
-        document.getElementById('alert-confirm-btn').onclick = () => {
+        const btn = document.getElementById('alert-confirm-btn');
+        const handleConfirm = (e) => {
+            if (e) e.preventDefault();
             overlay.remove();
             if (callback) callback();
         };
+
+        btn.addEventListener('click', handleConfirm);
+        btn.addEventListener('touchend', handleConfirm); // Backup for iOS touch
     },
 
     hardReset: function() {
