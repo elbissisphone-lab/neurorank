@@ -456,18 +456,25 @@ const App = {
             };
         }
 
-        // Hard Reset Logic
+        // Hard Reset Logic (Pointer Events for Touch/Mouse reliability)
         const resetBtn = document.getElementById('reset-btn');
         const resetFill = document.getElementById('reset-fill');
+        const resetBar = resetFill ? resetFill.parentElement : null;
         let resetTimer = null;
         let resetStartTime = 0;
 
-        if (resetBtn) {
+        if (resetBtn && resetFill) {
             const startReset = (e) => {
-                e.preventDefault();
+                // Prevent scrolling and default context menus during hold
+                if (e.pointerType === 'touch') {
+                    resetBtn.style.touchAction = 'none';
+                }
+                
                 resetStartTime = Date.now();
                 resetFill.style.width = '0%';
-                resetBtn.textContent = "HOLDING...";
+                if (resetBar) resetBar.style.opacity = '1';
+                resetBtn.textContent = "INITIATING PURGE...";
+                resetBtn.style.borderColor = "#ff4444";
                 
                 resetTimer = setInterval(() => {
                     const elapsed = Date.now() - resetStartTime;
@@ -484,15 +491,16 @@ const App = {
             const cancelReset = () => {
                 clearInterval(resetTimer);
                 resetFill.style.width = '0%';
+                if (resetBar) resetBar.style.opacity = '0.3';
                 resetBtn.textContent = "HOLD TO RESET ARCHITECTURE (5S)";
+                resetBtn.style.borderColor = "rgba(255, 68, 68, 0.3)";
+                resetBtn.style.touchAction = 'auto';
             };
 
-            resetBtn.addEventListener('mousedown', startReset);
-            resetBtn.addEventListener('touchstart', startReset, { passive: false });
-            
-            window.addEventListener('mouseup', cancelReset);
-            window.addEventListener('touchend', cancelReset);
-            resetBtn.addEventListener('mouseleave', cancelReset);
+            resetBtn.addEventListener('pointerdown', startReset);
+            resetBtn.addEventListener('pointerup', cancelReset);
+            resetBtn.addEventListener('pointerleave', cancelReset);
+            resetBtn.addEventListener('contextmenu', e => e.preventDefault());
         }
     },
 
