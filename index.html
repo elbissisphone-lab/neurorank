@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NeuroRank | Cognitive Excellence</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="greeting">
+                <span id="current-date">FRIDAY, MAY 15</span>
+                <h1>NeuroRank</h1>
+            </div>
+            <div class="level-indicator">
+                <div class="level-badge" id="header-level">Lvl 1</div>
+                <div class="xp-mini-bar"><div class="xp-mini-fill" id="header-xp-fill"></div></div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Today View -->
+            <section id="view-today" class="view active">
+                <div class="section-header">
+                    <h2>Daily Directives</h2>
+                    <span class="count" id="today-count">0 TASKS</span>
+                </div>
+                <div id="today-list" class="task-list">
+                    <!-- Tasks injected here -->
+                </div>
+            </section>
+
+            <!-- Progress View -->
+            <section id="view-progress" class="view">
+                <div class="section-header">
+                    <h2>Cognitive Mastery</h2>
+                </div>
+                <div class="mastery-card">
+                    <div class="mastery-level" id="mastery-level">LEVEL 1</div>
+                    <div class="mastery-rank">NOVICE ARCHITECT</div>
+                    <div class="xp-container">
+                        <div class="xp-label"><span>XP PROGRESS</span><span id="xp-ratio">0 / 100</span></div>
+                        <div class="xp-bar-large"><div class="xp-fill-large" id="mastery-xp-fill"></div></div>
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-total-completed">0</span>
+                        <span class="stat-lab">COMPLETED</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-active-routines">0</span>
+                        <span class="stat-lab">ROUTINES</span>
+                    </div>
+                </div>
+
+                <!-- Mastery Prediction Calculator -->
+                <div class="section-header" style="margin-top: 40px;">
+                    <h2>Mastery Prediction</h2>
+                </div>
+                <div class="mastery-calculator-card">
+                    <div class="form-group">
+                        <label>Target Routine</label>
+                        <select id="calc-routine-selector" onchange="App.calculatePrediction()">
+                            <option value="">Select Routine...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target Level</label>
+                        <select id="calc-level-selector" onchange="App.calculatePrediction()">
+                            <option value="5">Level 5 (Novice)</option>
+                            <option value="10">Level 10 (Advanced)</option>
+                            <option value="15">Level 15 (Professional)</option>
+                            <option value="20">Level 20 (Expert)</option>
+                            <option value="25">Level 25 (Elite)</option>
+                            <option value="30">Level 30 (Master)</option>
+                        </select>
+                    </div>
+                    <div id="prediction-output" class="prediction-results">
+                        <div class="result-placeholder">Select a routine to analyze path to mastery.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Manage View -->
+            <section id="view-manage" class="view">
+                <div class="section-header">
+                    <h2>Routine Architecture</h2>
+                    <button class="btn-add" onclick="openModal()">+ ADD TASK</button>
+                </div>
+                <div id="full-routine-list" class="task-list">
+                    <!-- All routines injected here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" onclick="switchView('today', this)">
+                <div class="nav-icon">◈</div>
+                <span>Today</span>
+            </button>
+            <button class="nav-item" onclick="switchView('progress', this)">
+                <div class="nav-icon">📈</div>
+                <span>Progress</span>
+            </button>
+            <button class="nav-item" onclick="switchView('manage', this)">
+                <div class="nav-icon">▤</div>
+                <span>Routines</span>
+            </button>
+        </nav>
+
+        <!-- Add Task Modal -->
+        <div id="task-modal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-title">New Task</h3>
+                    <button class="btn-close" onclick="closeModal()">✕</button>
+                </div>
+                <form id="task-form">
+                    <input type="hidden" id="editing-task-id" value="">
+                    <div class="form-group">
+                        <label>Task Name</label>
+                        <input type="text" id="task-name" placeholder="e.g., Deep Work" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Cognitive Stack</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <select id="task-focus-primary">
+                                <option value="Ni">Primary: Introverted Intuition (Ni)</option>
+                                <option value="Ne">Primary: Extraverted Intuition (Ne)</option>
+                                <option value="Ti">Primary: Introverted Thinking (Ti)</option>
+                                <option value="Te">Primary: Extraverted Thinking (Te)</option>
+                                <option value="Fi">Primary: Introverted Feeling (Fi)</option>
+                                <option value="Fe">Primary: Extraverted Feeling (Fe)</option>
+                                <option value="Si">Primary: Introverted Sensing (Si)</option>
+                                <option value="Se">Primary: Extraverted Sensing (Se)</option>
+                            </select>
+                            <select id="task-focus-secondary">
+                                <option value="none">Secondary: None</option>
+                                <option value="Ni">Secondary: Introverted Intuition (Ni)</option>
+                                <option value="Ne">Secondary: Extraverted Intuition (Ne)</option>
+                                <option value="Ti">Secondary: Introverted Thinking (Ti)</option>
+                                <option value="Te">Secondary: Extraverted Thinking (Te)</option>
+                                <option value="Fi">Secondary: Introverted Feeling (Fi)</option>
+                                <option value="Fe">Secondary: Extraverted Feeling (Fe)</option>
+                                <option value="Si">Secondary: Introverted Sensing (Si)</option>
+                                <option value="Se">Secondary: Extraverted Sensing (Se)</option>
+                            </select>
+                            <select id="task-focus-tertiary">
+                                <option value="none">Tertiary: None</option>
+                                <option value="Ni">Tertiary: Introverted Intuition (Ni)</option>
+                                <option value="Ne">Tertiary: Extraverted Intuition (Ne)</option>
+                                <option value="Ti">Tertiary: Introverted Thinking (Ti)</option>
+                                <option value="Te">Tertiary: Extraverted Thinking (Te)</option>
+                                <option value="Fi">Tertiary: Introverted Feeling (Fi)</option>
+                                <option value="Fe">Tertiary: Extraverted Feeling (Fe)</option>
+                                <option value="Si">Tertiary: Introverted Sensing (Si)</option>
+                                <option value="Se">Tertiary: Extraverted Sensing (Se)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Target Time</label>
+                        <input type="time" id="task-time" value="08:00">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Importance</label>
+                        <select id="task-importance">
+                            <option value="2">20% - Low Impact</option>
+                            <option value="4">40% - Moderate</option>
+                            <option value="6">60% - Significant</option>
+                            <option value="8">80% - High Priority</option>
+                            <option value="10">100% - Vital</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Difficulty</label>
+                        <select id="task-difficulty">
+                            <option value="2">20% - Easy</option>
+                            <option value="4">40% - Moderate</option>
+                            <option value="6">60% - Challenging</option>
+                            <option value="8">80% - Hard</option>
+                            <option value="10">100% - Elite</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Duration</label>
+                        <select id="task-duration">
+                            <option value="5">&lt; 10 min</option>
+                            <option value="10">10 - 30 min</option>
+                            <option value="30">30 min - 1 hr</option>
+                            <option value="50">1 - 2 hrs</option>
+                            <option value="80">+ 2 hrs</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Implementation Days</label>
+                        <div class="days-selector">
+                            <label><input type="checkbox" value="1"> <span>M</span></label>
+                            <label><input type="checkbox" value="2"> <span>T</span></label>
+                            <label><input type="checkbox" value="3"> <span>W</span></label>
+                            <label><input type="checkbox" value="4"> <span>T</span></label>
+                            <label><input type="checkbox" value="5"> <span>F</span></label>
+                            <label><input type="checkbox" value="6"> <span>S</span></label>
+                            <label><input type="checkbox" value="0"> <span>S</span></label>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-submit-task" class="btn-save">ADD ROUTINE</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
