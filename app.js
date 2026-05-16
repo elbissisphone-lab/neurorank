@@ -25,19 +25,20 @@ const App = {
         this.render();
         this.setupEventListeners();
         this.registerServiceWorker();
+        
+        // Sync notification state with browser permission
+        if (Notification.permission === 'granted') {
+            this.state.notificationsEnabled = true;
+        }
+
         this.startNotificationTimer();
     },
 
     registerServiceWorker: function() {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
-                .then(reg => {
-                    console.log('SW Registered');
-                    // Removed diagnostic alert for production, but keeping logic
-                })
-                .catch(err => alert('SW Registration Failed: ' + err));
-        } else {
-            alert('Service Workers are not supported in this browser.');
+                .then(reg => console.log('SW Registered'))
+                .catch(err => console.log('SW Registration Failed', err));
         }
     },
 
@@ -47,32 +48,31 @@ const App = {
             return;
         }
 
-        alert("Current Permission: " + Notification.permission);
-
         Notification.requestPermission().then(permission => {
-            alert("New Permission Status: " + permission);
             if (permission === "granted") {
                 this.state.notificationsEnabled = true;
                 this.saveData();
                 this.render();
+                
+                // Show a confirmation notification immediately
+                this.sendNotification({ name: "System Alerts Active" });
+            } else if (permission === "denied") {
+                alert("Notification permission denied. Please enable them in iPhone Settings > Notifications > NeuroRank.");
             }
         });
     },
 
     startNotificationTimer: function() {
-        setInterval(() => {
+        // Clear any existing timers
+        if (this.notificationTimer) clearInterval(this.notificationTimer);
+        
+        this.notificationTimer = setInterval(() => {
             this.checkNotifications();
-            // Heartbeat for debugging: pulse the test button if it exists
-            const testBtn = document.getElementById('test-notify');
-            if (testBtn) {
-                testBtn.style.borderColor = 'var(--gold)';
-                setTimeout(() => { testBtn.style.borderColor = 'var(--gold-dim)'; }, 500);
-            }
-        }, 30000); // Check every 30 seconds
+        }, 10000); // Check every 10 seconds for high reliability
     },
 
     checkNotifications: function() {
-        if (!this.state.notificationsEnabled) return;
+        if (!this.state.notificationsEnabled || Notification.permission !== "granted") return;
         
         const now = new Date();
         const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
@@ -82,16 +82,16 @@ const App = {
         const todaysTasks = this.state.routines.filter(r => r.days.includes(dayOfWeek));
         
         todaysTasks.forEach(task => {
-            // If it's time, notifications are enabled for this task, and we haven't notified for this task today yet
-            if (task.time === currentTime && 
-                (task.notificationsEnabled !== false) && 
-                !this.state.lastNotified[dateKey + task.id]) {
-                
-                const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
-                if (!isChecked) {
-                    this.sendNotification(task);
-                    this.state.lastNotified[dateKey + task.id] = true;
-                    this.saveData();
+            // Only notify if: it's time, enabled for this task, not already notified today, and NOT checked off
+            if (task.time === currentTime && (task.notificationsEnabled !== false)) {
+                const notifyKey = dateKey + task.id;
+                if (!this.state.lastNotified[notifyKey]) {
+                    const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
+                    if (!isChecked) {
+                        this.sendNotification(task);
+                        this.state.lastNotified[notifyKey] = true;
+                        this.saveData();
+                    }
                 }
             }
         });
@@ -101,12 +101,14 @@ const App = {
         if (Notification.permission === "granted") {
             navigator.serviceWorker.ready.then(registration => {
                 registration.showNotification("NeuroRank Directive", {
-                    body: `It's time for: ${task.name}`,
+                    body: task.id ? `It's time for: ${task.name}` : task.name,
                     icon: 'logo.png',
                     badge: 'logo.png',
-                    vibrate: [200, 100, 200]
+                    vibrate: [200, 100, 200],
+                    tag: task.id || 'system-alert',
+                    renotify: true
                 });
-            }).catch(err => alert("Notification Error: " + err));
+            });
         }
     },
 
