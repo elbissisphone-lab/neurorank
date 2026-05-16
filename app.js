@@ -455,6 +455,51 @@ const App = {
                 this.saveData(); this.render(); closeModal();
             };
         }
+
+        // Hard Reset Logic
+        const resetBtn = document.getElementById('reset-btn');
+        const resetFill = document.getElementById('reset-fill');
+        let resetTimer = null;
+        let resetStartTime = 0;
+
+        if (resetBtn) {
+            const startReset = (e) => {
+                e.preventDefault();
+                resetStartTime = Date.now();
+                resetFill.style.width = '0%';
+                resetBtn.textContent = "HOLDING...";
+                
+                resetTimer = setInterval(() => {
+                    const elapsed = Date.now() - resetStartTime;
+                    const progress = Math.min((elapsed / 5000) * 100, 100);
+                    resetFill.style.width = progress + '%';
+
+                    if (elapsed >= 5000) {
+                        clearInterval(resetTimer);
+                        this.hardReset();
+                    }
+                }, 50);
+            };
+
+            const cancelReset = () => {
+                clearInterval(resetTimer);
+                resetFill.style.width = '0%';
+                resetBtn.textContent = "HOLD TO RESET ARCHITECTURE (5S)";
+            };
+
+            resetBtn.addEventListener('mousedown', startReset);
+            resetBtn.addEventListener('touchstart', startReset, { passive: false });
+            
+            window.addEventListener('mouseup', cancelReset);
+            window.addEventListener('touchend', cancelReset);
+            resetBtn.addEventListener('mouseleave', cancelReset);
+        }
+    },
+
+    hardReset: function() {
+        localStorage.clear();
+        alert("ARCHITECTURE PURGED. System rebooting...");
+        window.location.reload();
     }
 };
 

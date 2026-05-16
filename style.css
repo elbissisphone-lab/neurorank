@@ -611,3 +611,65 @@ input:focus, select:focus {
 .btn-delete:hover {
     opacity: 1;
 }
+
+/* Hard Reset Zone */
+.reset-zone {
+    margin-top: 60px;
+    margin-bottom: 40px;
+    padding: 30px 20px;
+    border-top: 1px solid #222;
+    text-align: center;
+}
+
+.btn-reset {
+    background: none;
+    border: 1px solid #333;
+    color: #555;
+    padding: 12px 24px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.btn-reset:active {
+    color: #ff4444;
+    border-color: #ff4444;
+    background: rgba(255, 68, 68, 0.05);
+}
+
+.reset-progress-bar {
+    width: 180px;
+    height: 3px;
+    background: #1a1a1a;
+    margin: 15px auto;
+    border-radius: 10px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.reset-zone:active-within .reset-progress-bar {
+    opacity: 1;
+}
+
+.reset-fill {
+    width: 0%;
+    height: 100%;
+    background: #ff4444;
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+    transition: width 0.1s linear;
+}
+
+.reset-warning {
+    font-size: 0.65rem;
+    color: #444;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
