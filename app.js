@@ -26,38 +26,21 @@ const App = {
     },
 
     init: function() {
-        const status = document.getElementById('debug-status');
         try {
-            if (status) status.textContent = "BOOT: DATA";
             this.loadData();
-            
-            if (status) status.textContent = "BOOT: MISSED";
             this.processMissedTasks();
-            
-            if (status) status.textContent = "BOOT: HEADER";
             this.updateHeader();
-            
-            if (status) status.textContent = "BOOT: RENDER";
             this.render();
-            
-            if (status) status.textContent = "BOOT: EVENTS";
             this.setupEventListeners();
-            
-            if (status) status.textContent = "BOOT: SW";
             this.registerServiceWorker();
             
-            if (status) status.textContent = "BOOT: SYNC";
             if (window.Notification && Notification.permission === 'granted') {
                 this.state.notificationsEnabled = true;
             }
 
-            if (status) status.textContent = "BOOT: TIMER";
             this.startNotificationTimer();
-            
-            if (status) status.textContent = "READY";
         } catch (e) {
-            if (status) status.textContent = "CRASH: " + e.message;
-            alert("App Init Crash: " + e.message);
+            console.error("App Init Crash: " + e.message);
         }
     },
 
