@@ -8,6 +8,8 @@ const App = {
         completions: {}, 
         totalCompleted: 0,
         lastLoginDate: null,
+        notificationsEnabled: false,
+        lastNotified: {},
         mastery: {
             "Ni": { xp: 0, level: 1 }, "Ne": { xp: 0, level: 1 },
             "Ti": { xp: 0, level: 1 }, "Te": { xp: 0, level: 1 },
@@ -22,6 +24,74 @@ const App = {
         this.updateHeader();
         this.render();
         this.setupEventListeners();
+        this.registerServiceWorker();
+        this.startNotificationTimer();
+    },
+
+    registerServiceWorker: function() {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW Registered'))
+                .catch(err => console.log('SW Failed', err));
+        }
+    },
+
+    requestNotificationPermission: function() {
+        if (!('Notification' in window)) {
+            alert("This browser does not support notifications.");
+            return;
+        }
+
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                this.state.notificationsEnabled = true;
+                this.saveData();
+                alert("Notifications Enabled!");
+                this.render();
+            }
+        });
+    },
+
+    startNotificationTimer: function() {
+        setInterval(() => {
+            this.checkNotifications();
+        }, 30000); // Check every 30 seconds
+    },
+
+    checkNotifications: function() {
+        if (!this.state.notificationsEnabled) return;
+        
+        const now = new Date();
+        const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        const dayOfWeek = now.getDay().toString();
+        const dateKey = this.getDateKey();
+
+        const todaysTasks = this.state.routines.filter(r => r.days.includes(dayOfWeek));
+        
+        todaysTasks.forEach(task => {
+            // If it's time, and we haven't notified for this task today yet
+            if (task.time === currentTime && !this.state.lastNotified[dateKey + task.id]) {
+                const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
+                if (!isChecked) {
+                    this.sendNotification(task);
+                    this.state.lastNotified[dateKey + task.id] = true;
+                    this.saveData();
+                }
+            }
+        });
+    },
+
+    sendNotification: function(task) {
+        if (Notification.permission === "granted") {
+            navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification("NeuroRank Directive", {
+                    body: `It's time for: ${task.name}`,
+                    icon: 'logo.png',
+                    badge: 'logo.png',
+                    vibrate: [200, 100, 200]
+                });
+            });
+        }
     },
 
     loadData: function() {

@@ -20,7 +20,10 @@
         <!-- Header -->
         <header class="app-header">
             <div class="greeting">
-                <span id="current-date">FRIDAY, MAY 15</span>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="current-date">FRIDAY, MAY 15</span>
+                    <button id="notify-toggle" class="btn-notify" onclick="App.requestNotificationPermission()" title="Enable Alerts">🔔</button>
+                </div>
                 <h1>NeuroRank</h1>
             </div>
             <div class="level-indicator">

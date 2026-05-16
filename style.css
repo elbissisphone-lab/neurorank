@@ -58,6 +58,25 @@ h1, h2, h3 {
     margin-top: 4px;
 }
 
+.btn-notify {
+    background: none;
+    border: 1px solid var(--gold-dim);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+}
+
+.btn-notify:hover {
+    border-color: var(--gold);
+    background: var(--gold-dim);
+}
+
 /* Level Indicator in Header */
 .level-indicator {
     display: flex;
