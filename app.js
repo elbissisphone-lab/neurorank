@@ -32,6 +32,27 @@ const App = {
         const saved = localStorage.getItem('elite_app_state_v5');
         if (saved) {
             this.state = JSON.parse(saved);
+
+            // Migration for XP V6 (Importance/Difficulty x2, Duration 15/45/60)
+            if (!this.state.xpSystemV6) {
+                this.state.routines = this.state.routines.map(r => {
+                    let imp = parseInt(r.importance);
+                    if (imp <= 10) r.importance = (imp * 2).toString();
+                    
+                    let diff = parseInt(r.difficulty);
+                    if (diff <= 10) r.difficulty = (diff * 2).toString();
+                    
+                    let dur = parseInt(r.duration);
+                    if (dur === 10) r.duration = "15";
+                    else if (dur === 50) r.duration = "45";
+                    else if (dur === 80) r.duration = "60";
+                    
+                    r.xpValue = parseInt(r.importance) + parseInt(r.difficulty) + parseInt(r.duration);
+                    return r;
+                });
+                this.state.xpSystemV6 = true;
+                this.saveData();
+            }
         } else {
             // Migration from V3/V4
             const oldSaved = localStorage.getItem('elite_app_state_v3');
@@ -50,6 +71,7 @@ const App = {
                     return r;
                 });
             }
+            this.state.xpSystemV6 = true;
             this.saveData();
         }
     },
@@ -362,8 +384,8 @@ const App = {
         document.getElementById('task-focus-secondary').value = routine.focus.secondary || 'none';
         document.getElementById('task-focus-tertiary').value = routine.focus.tertiary || 'none';
         document.getElementById('task-time').value = routine.time || "08:00";
-        document.getElementById('task-importance').value = routine.importance || "6";
-        document.getElementById('task-difficulty').value = routine.difficulty || "6";
+        document.getElementById('task-importance').value = routine.importance || "12";
+        document.getElementById('task-difficulty').value = routine.difficulty || "12";
         document.getElementById('task-duration').value = routine.duration || "30";
         document.querySelectorAll('.days-selector input').forEach(cb => { cb.checked = routine.days.includes(cb.value); });
         document.getElementById('modal-title').textContent = "Edit Routine";
