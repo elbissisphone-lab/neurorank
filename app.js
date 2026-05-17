@@ -89,13 +89,16 @@ const App = {
     },
 
     getRankTitle: function(level) {
-        if (level >= 30) return "MASTER ARCHITECT";
-        if (level >= 25) return "ELITE ARCHITECT";
-        if (level >= 20) return "EXPERT ARCHITECT";
-        if (level >= 15) return "PROFESSIONAL ARCHITECT";
-        if (level >= 10) return "ADVANCED ARCHITECT";
-        if (level >= 5) return "APPRENTICE ARCHITECT";
-        return "NOVICE ARCHITECT";
+        if (level >= 28) return "ELITE";        // Rank 10
+        if (level >= 25) return "MASTER";       // Rank 9
+        if (level >= 22) return "PROFESSIONAL"; // Rank 8
+        if (level >= 19) return "EXPERT";       // Rank 7
+        if (level >= 16) return "SPECIALIST";   // Rank 6
+        if (level >= 13) return "PRINCIPAL";    // Rank 5
+        if (level >= 10) return "LEAD";         // Rank 4
+        if (level >= 7)  return "SENIOR";       // Rank 3
+        if (level >= 4)  return "ASSOCIATE";    // Rank 2
+        return "JUNIOR";                        // Rank 1
     },
 
     processMissedTasks: function() {
@@ -234,7 +237,7 @@ const App = {
             const progress = data.level >= 30 ? 100 : (data.xp / xpReq) * 100;
             const card = document.createElement('div');
             card.className = 'function-mastery-card';
-            card.innerHTML = `<div class="func-header"><span class="func-name">${func} Focus</span><span class="func-level">LVL ${data.level}</span></div><div class="xp-mini-bar" style="width: 100%; height: 6px; margin: 10px 0;"><div class="xp-mini-fill" style="width: ${progress}%"></div></div><div class="func-xp-text">${data.level >= 30 ? 'MAX' : `${data.xp}/${xpReq} XP`}</div>`;
+            card.innerHTML = `<div class="func-header"><span class="func-name">${func} Level</span><span class="func-level">LVL ${data.level}</span></div><div class="xp-mini-bar" style="width: 100%; height: 6px; margin: 10px 0;"><div class="xp-mini-fill" style="width: ${progress}%"></div></div><div class="func-xp-text">${data.level >= 30 ? 'MAX' : `${data.xp}/${xpReq} XP`}</div>`;
             container.appendChild(card);
         });
         this.renderCalculator();
@@ -279,7 +282,7 @@ const App = {
         } else {
             timeEstimate = "Not Scheduled";
         }
-        output.innerHTML = `<div class="prediction-data"><div class="pred-item"><span class="pred-label">Target Mastery [${primaryFunc}]</span><span class="pred-value">Lvl ${targetLevel}</span></div><div class="pred-item"><span class="pred-label">Required Completions</span><span class="pred-value">${completions}</span></div><div class="pred-sub">At ${routine.xpValue || 20} XP per session</div><div class="pred-item" style="margin-top: 10px;"><span class="pred-label">Estimated Timeline</span><span class="pred-value">${timeEstimate}</span></div><div class="pred-sub">Based on ${daysPerWeek} days/week frequency</div></div>`;
+        output.innerHTML = `<div class="prediction-data"><div class="pred-item"><span class="pred-label">Target Level [${primaryFunc}]</span><span class="pred-value">Lvl ${targetLevel}</span></div><div class="pred-item"><span class="pred-label">Required Completions</span><span class="pred-value">${completions}</span></div><div class="pred-sub">At ${routine.xpValue || 20} XP per session</div><div class="pred-item" style="margin-top: 10px;"><span class="pred-label">Estimated Timeline</span><span class="pred-value">${timeEstimate}</span></div><div class="pred-sub">Based on ${daysPerWeek} days/week frequency</div></div>`;
     },
 
     createMasteryGrid: function() {
