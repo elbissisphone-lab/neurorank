@@ -82,7 +82,7 @@ const App = {
 
     getXPRequired: function(level) {
         if (level >= 30) return Infinity;
-        return Math.floor(100 + (level * 20));
+        return Math.floor(120 + Math.pow(level, 2.5) * 2);
     },
 
     getFunctionCumulativeXP: function(funcData) {
