@@ -337,8 +337,9 @@ const App = {
             const isChecked = (this.state.completions[dateKey] || []).includes(task.id);
             const card = document.createElement('div');
             card.className = 'task-card';
+            card.onclick = () => this.toggleTask(task.id);
             const stack = [task.focus.primary, task.focus.secondary, task.focus.tertiary].filter(f => f && f !== 'none').join(' / ');
-            card.innerHTML = `<div class="task-info"><span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span><span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span></div><div class="checkbox ${isChecked ? 'checked' : ''}" onclick="App.toggleTask('${task.id}')"></div>`;
+            card.innerHTML = `<div class="task-info"><span class="task-name">${task.name} <span class="xp-tag">+${task.xpValue || 20} XP</span></span><span class="task-meta">${this.formatTime(task.time || "00:00")} • [${stack}]</span></div><div class="checkbox ${isChecked ? 'checked' : ''}"></div>`;
             todayList.appendChild(card);
         });
     },
